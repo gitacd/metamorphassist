@@ -1,11 +1,13 @@
 -DEFAULT &ECHO=OFF
+ 
 -*-INCLUDE UTILITIES/TEST_SETUP
  
 -* START Guide -*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*
 -***** CONTROL Variables
 -*       &TtlOvrLay?='N';
 -SET    &WriteFROM_TO?='N';
--SET    &Phase = IN; 
+-* &Phase (EXTRACT,EDIT,REPORT)
+-SET    &Phase = REPORT; 
 -***** HOLD Files
 -*****    MMA_H10  : Current SYSCOLUM list of NAME --> COLUM, ALIAS-->COLUM_ALIAS,TITLE, COLNO
 -*****    MMA_WORDS: Synonym's FIELDNAMES broken into words by "_"
@@ -18,7 +20,13 @@
  
 -*Show word with usage counts by syn? By Folder?
 -*  Is there a repository FOC DB.. then FROM_TO is built off that?
--*
+-* Structure
+-* WORD
+-*  - APP
+-*    - MFD
+-*      - NAME
+-*        Date?
+-*        Name Source? (FIELDNAME,ALIAS)
 -*   END Guide -*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*
  
  
@@ -78,9 +86,12 @@ END
  
  
 -TYPE FromToLines: &FromToLines
- 
+-SET &MaxWordLen=12;
+-GOTO SHOWIT
+-GOTO PHASE_&Phase
+-PHASE_EXTRACT
 -*WHENCE  METAMORPHASSISTOR MASTER
--*-GOTO SHOWIT
+ 
 TABLE FILE SYSCOLUM
 PRINT NAME/A512V AS COLUM ALIAS/A512V AS COLUM_ALIAS TITLE/A512V COLNO  TBNAME COMPUTE COL_NAME_LEN/I4=ARGLEN ( &SysColLen, NAME, 'I4');
 WHERE TBNAME EQ '&syn'
@@ -168,17 +179,26 @@ APP FI OCCURSEG DISK BASEAPP/MMA_WORDS.MAS (APPEND
 -CLOSE OCCURSEG
 -RUN
 -SHOWIT
--*APP FI MMA_WORDS DISK BASEAPP/MMA_WORDS.FTM
+APP FI MMA_WORDS DISK BASEAPP/MMA_WORDS.FTM
 DEFINE FILE MMA_WORDS
 NAME/A&SysColLen=IF COLNO EQ 7 AND TBNAME EQ 'metamorphassistor' THEN 'Long freaking name, ok?' ELSE NAME;
 WORD_LEN/I3=ARGLEN (&SysColLen, TWORD, 'I3');
 WORD_PATTERN/A&MaxWordLen = PATTERN (&MaxWordLen , TWORD, WORD_PATTERN);
 END
--GOTO RPT2
+-*-GOTO RPT2
 TABLE FILE MMA_WORDS
-PRINT NAME TWORD  COMPUTE DOUBLE/A1025V= IF NAME EQ LAST NAME THEN LAST TWORD || '_' || TWORD ELSE ' ';
- 
+PRINT 
+COMPUTE DELIM_CNT/I2=IF NAME NE LAST NAME  THEN 0 ELSE TWORD_SEQ - LAST TWORD_SEQ ; NOPRINT
+COMPUTE DELIM/A5=DECODE DELIM_CNT (0 '' 1 '_' 2 '__' 3 '___' 4 '____' ELSE '_____'); NOPRINT
+COMPUTE DOUBLE/A512V= IF NAME NE LAST NAME 
+                                           THEN ' ' ELSE LAST TWORD || DELIM || TWORD;
+COMPUTE TRIPLE/A512V= IF NAME NE LAST NAME   OR LAST DOUBLE EQ ' '       
+                                           THEN ' ' ELSE LAST DOUBLE || DELIM || TWORD;
 WHERE TWORD GT ' '
+-*AND NAME CONTAINS '__'
+BY NAME
+BY TWORD_SEQ NOPRINT
+BY TWORD
  
 END
 -EXIT
@@ -231,6 +251,14 @@ END
  
  
 -EXIT
+-PHASE_EDIT
+-TYPE PHASE_EDIT
+-EXIT
+ 
+-PHASE_REPORT
+TABLE FILE FROM_TO PRINT FROM TO
+WHERE TO GT ' '
+END
 -CHECKIT
 TABLE FILE MMA_WORDS PRINT TBNAME MAXWORDLEN  NAME TWORD&MaxWordCnt TWORD
 WHERE TWORD GT ' '
