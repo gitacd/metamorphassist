@@ -5,11 +5,20 @@
 -***** CONTROL Variables
 -*       &TtlOvrLay?='N';
 -SET    &WriteFROM_TO?='N';
- 
+-SET    &Phase = IN; 
 -***** HOLD Files
 -*****    MMA_H10  : Current SYSCOLUM list of NAME --> COLUM, ALIAS-->COLUM_ALIAS,TITLE, COLNO
 -*****    MMA_WORDS: Synonym's FIELDNAMES broken into words by "_"
  
+-***** User Phases:
+-*****  1. Extract words
+-*            What if a synonym is changed? 
+-*****  2. Build Titles/Write Syn
+-*****  3. Write Syn
+ 
+-*Show word with usage counts by syn? By Folder?
+-*  Is there a repository FOC DB.. then FROM_TO is built off that?
+-*
 -*   END Guide -*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*-*_*
  
  
@@ -190,7 +199,7 @@ PRINT   TITLE TWORD  LONGDESC
 TWORD_SEQ
 BY WORD_LEN
 BY HIGHEST TOTAL CNT.TWORD NOPRINT
-BY TWORD 
+BY TWORD
 -*BY TOP 2 NAME
 BY TBNAME
 BY COLNO BY NAME
@@ -199,15 +208,15 @@ BY COLNO BY NAME
 WHERE TWORD GT ' '
 -*WHERE NAME CONTAINS 'CODE'
 -*END
--*-EXIT 
+-*-EXIT
 ON TABLE
 HOLD AS MMA_H30
 END
 -IF &WriteFROM_TO? NE Y GOTO NOFROMTO;
 APP HOLDMETA &FROMTO_Folder
 TABLE FILE MMA_H30
-SUM  
-COMPUTE TO/A512V= ' '; NAME AS 'Example' 
+SUM
+COMPUTE TO/A512V= ' '; NAME AS 'Example'
 BY HIGHEST OCCURANCES AS 'Occurances'
 BY TWORD AS FROM
  
